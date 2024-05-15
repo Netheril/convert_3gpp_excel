@@ -68,20 +68,20 @@ public class SheetParserUtilsTest {
     @Test
     public void safeGetCellString_succeed() {
         ImmutableMap<ExcelCellIndex, String> expectedResults = ImmutableMap.<ExcelCellIndex, String>builder()
-                .put(new ExcelCellIndex(1, 1), "123")
-                .put(new ExcelCellIndex(1, 3), "abc")
-                .put(new ExcelCellIndex(3, 1), "4.567")
+                .put(ExcelCellIndex.of(1, 1), "123")
+                .put(ExcelCellIndex.of(1, 3), "abc")
+                .put(ExcelCellIndex.of(3, 1), "4.567")
                 // A cell in which text contains subscriptions and superscriptions.
-                .put(new ExcelCellIndex(3, 3), "abc,def,hij")
+                .put(ExcelCellIndex.of(3, 3), "abc,def,hij")
                 // A cell in which text contains superscriptions at end.
-                .put(new ExcelCellIndex(4, 2), "abc")
+                .put(ExcelCellIndex.of(4, 2), "abc")
                 // A cell in which text using slightly different font color between the first
                 // half and the second half. We expect to get a whole string here.
-                .put(new ExcelCellIndex(4, 3), "abcdef")
+                .put(ExcelCellIndex.of(4, 3), "abcdef")
                 .buildOrThrow();
         for (int row = 0; row < 5; row++) {
             for (int column = 0; column < 5; column++) {
-                ExcelCellIndex idx = new ExcelCellIndex(row, column);
+                ExcelCellIndex idx = ExcelCellIndex.of(row, column);
                 String expected = expectedResults.getOrDefault(idx, "");
                 String actual = SheetParserUtils.safeGetCellString(testSheet, idx);
                 assertEquals(
@@ -96,16 +96,16 @@ public class SheetParserUtilsTest {
     public void safeGetCellString_fail() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> SheetParserUtils.safeGetCellString(null, new ExcelCellIndex(0, 0)));
+                () -> SheetParserUtils.safeGetCellString(null, ExcelCellIndex.of(0, 0)));
         assertThrows(
                 IllegalArgumentException.class,
-                () -> SheetParserUtils.safeGetCellString(testSheet, new ExcelCellIndex(-1, 0)));
+                () -> SheetParserUtils.safeGetCellString(testSheet, ExcelCellIndex.of(-1, 0)));
         assertThrows(
                 IllegalArgumentException.class,
-                () -> SheetParserUtils.safeGetCellString(testSheet, new ExcelCellIndex(0, -1)));
+                () -> SheetParserUtils.safeGetCellString(testSheet, ExcelCellIndex.of(0, -1)));
         // Cell C6 (e.g., row = 5, column = 2) is a formula cell which is not supported.
         assertThrows(
                 IllegalArgumentException.class,
-                () -> SheetParserUtils.safeGetCellString(testSheet, new ExcelCellIndex(5, 2)));
+                () -> SheetParserUtils.safeGetCellString(testSheet, ExcelCellIndex.of(5, 2)));
     }
 }

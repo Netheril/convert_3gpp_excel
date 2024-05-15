@@ -26,7 +26,7 @@ final class SheetParserUtils {
         if (!m.matches()) {
             throw new IllegalArgumentException(String.format("Unrecognizable Excel cell name '%s'", name));
         }
-        return new ExcelCellIndex(Integer.valueOf(m.group(2), 10) - 1, translateColumnName(m.group(1)));
+        return ExcelCellIndex.of(Integer.valueOf(m.group(2), 10).intValue() - 1, translateColumnName(m.group(1)));
     }
 
     private static int translateColumnName(String name) {

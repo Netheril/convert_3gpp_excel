@@ -24,7 +24,7 @@ public class App {
             XSSFWorkbook wb = new XSSFWorkbook(file);
             XSSFSheet sheet = wb.getSheetAt(0);
             System.out.println("== cell ==");
-            System.out.println(SheetParserUtils.safeGetCellString(sheet, new ExcelCellIndex(3, 3)));
+            System.out.println(SheetParserUtils.safeGetCellString(sheet, ExcelCellIndex.of(3, 3)));
             System.out.println("== /cell ==");
             wb.close();
 
