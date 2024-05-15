@@ -4,6 +4,8 @@
 package club.netheril.convert_3gpp_excel;
 
 import java.io.FileInputStream;
+
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class App {
@@ -20,6 +22,11 @@ public class App {
         try {
             FileInputStream file = new FileInputStream(args[0]);
             XSSFWorkbook wb = new XSSFWorkbook(file);
+            XSSFSheet sheet = wb.getSheetAt(0);
+            System.out.println("== cell ==");
+            System.out.println(SheetParserUtils.safeGetCellString(sheet, new ExcelCellIndex(3, 3)));
+            System.out.println("== /cell ==");
+            wb.close();
 
         } catch (Throwable e) {
             throw new IllegalArgumentException(
