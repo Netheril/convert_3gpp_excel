@@ -1,5 +1,7 @@
 package club.netheril.convert_3gpp_excel;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -15,9 +17,7 @@ final class MetadataSheetParser {
 
     public static TableMetadata parse(XSSFWorkbook workbook) {
         XSSFSheet sheet = workbook.getSheet(SHEET_NAME);
-        if (sheet == null) {
-            throw new IllegalArgumentException("Unable to find metadata sheet in the Excel file.");
-        }
+        checkNotNull(sheet, "Unable to find metadata sheet in the Excel file");
 
         String specName = null;
         String specVersion = null;
@@ -43,12 +43,10 @@ final class MetadataSheetParser {
             } else if (key.equals(KEY_TITLE)) {
                 tableTitle = value;
             } else if (key.equals(KEY_TOP_LEFT)) {
-                System.out.println("in tl");
                 ExcelCellIndex topLeft = SheetParserUtils.parseExcelCellName(value);
                 beginRow = topLeft.row();
                 beginCol = topLeft.col();
             } else if (key.equals(KEY_TOP_BOTTOM_RIGHT)) {
-                System.out.println("in br");
                 ExcelCellIndex bottomRight = SheetParserUtils.parseExcelCellName(value);
                 endRow = bottomRight.row() + 1;
                 endCol = bottomRight.col() + 1;
