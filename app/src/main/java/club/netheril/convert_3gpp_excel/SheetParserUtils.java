@@ -22,7 +22,7 @@ import static com.google.common.base.Preconditions.*;
 
 final class SheetParserUtils {
 
-    private static final int MAX_COLUMN_IDX = 20;
+    private static final int MAX_COLUMN_IDX = 1000;
     private static final Pattern EXCEL_CELL_NAME_PATTERN = Pattern.compile("^([A-Z]+)([0-9]+)$");
 
     // Parse a cell name used by Excel to the 0-based row/column index pair.
