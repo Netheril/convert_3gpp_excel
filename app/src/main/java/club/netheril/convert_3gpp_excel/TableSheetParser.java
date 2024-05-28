@@ -22,30 +22,18 @@ final class TableSheetParser {
   public static TableData parse(XSSFWorkbook workbook, TableMetadata metadata) {
     XSSFSheet sheet = workbook.getSheet(SHEET_NAME);
     checkArgument(sheet != null, "Unable to find Table sheet.");
-    for (int row = metadata.begin_row(); row < metadata.end_row(); row++) {
-      checkArgument(
-          sheet.getRow(row) != null,
-          String.format(
-              "Invalid table sheet, row %d doesn't exist while metadata says the end row is %d",
-              row, metadata.end_row()));
-      for (int column = metadata.begin_col(); column < metadata.end_col(); column++) {
+    ExcelRect tableDataRect = metadata.tableDataRect();
+    for (int row = tableDataRect.beginRow(); row < tableDataRect.endRow(); row++) {
+      for (int column = tableDataRect.beginColumn(); column < tableDataRect.endColumn(); column++) {
         checkArgument(
-            sheet.getRow(row).getCell(column) != null,
+            sheet.getRow(row) != null && sheet.getRow(row).getCell(column) != null,
             String.format(
-                "Invalid table sheet, column %d at row %d doesn't exist while metadata says the end"
-                    + " column is %d",
-                column, row, metadata.end_col()));
+                "Invalid table sheet, cell %s in table data rect %s doesn't exist",
+                ExcelCellIndex.of(row, column), tableDataRect));
       }
     }
 
-    return TableData.of(
-        parseRowsFromRectagle(
-            sheet,
-            metadata.begin_row(),
-            metadata.end_row(),
-            metadata.begin_col(),
-            metadata.end_col(),
-            false));
+    return TableData.of(parseRowsFromRectagle(sheet, metadata.tableDataRect(), false));
   }
 
   // Parse a rectagle area in the sheet that consists of one or more logical rows.
@@ -54,25 +42,22 @@ final class TableSheetParser {
   // 2. This rectagle is splitted into logical table rows according horizontal
   // continuous top borders that across the entire rectagle.
   private static List<TableRow> parseRowsFromRectagle(
-      XSSFSheet sheet,
-      int beginRow,
-      int endRow,
-      int beginColumn,
-      int endColumn,
-      boolean strictCheck) {
-    checkSheetRectagle(sheet, beginRow, endRow, beginColumn, endColumn);
-    ImmutableSet<Integer> allColumns = integerSetFromRange(beginColumn, endColumn);
+      XSSFSheet sheet, ExcelRect rect, boolean strictCheck) {
+    checkSheetRectagle(sheet, rect);
+    ImmutableSet<Integer> allColumns = integerSetFromRange(rect.beginColumn(), rect.endColumn());
     if (strictCheck) {
       checkArgument(
-          IntStream.range(beginRow + 1, endRow)
+          IntStream.range(rect.beginRow() + 1, rect.endRow())
               .anyMatch(row -> SheetParserUtils.hasTopBorder(sheet, row, allColumns)));
     }
 
-    int subBeginRow = beginRow;
+    int subBeginRow = rect.beginRow();
     ArrayList<TableRow> parsedRows = Lists.newArrayList();
-    for (int row = beginRow + 1; row <= endRow; row++) {
+    for (int row = rect.beginRow() + 1; row <= rect.endRow(); row++) {
       if (SheetParserUtils.hasTopBorder(sheet, row, allColumns)) {
-        parsedRows.add(parseOneRowFromRectagle(sheet, subBeginRow, row, beginColumn, endColumn));
+        parsedRows.add(
+            parseOneRowFromRectagle(
+                sheet, ExcelRect.of(subBeginRow, row, rect.beginColumn(), rect.endColumn())));
         subBeginRow = row;
       }
     }
@@ -84,26 +69,22 @@ final class TableSheetParser {
   // 1. This rectagle is surrounded by borders.
   // 2. There is no horizontal continuous top borders that across the entire
   // rectagle.
-  private static TableRow parseOneRowFromRectagle(
-      XSSFSheet sheet,
-      final int beginRow,
-      final int endRow,
-      final int beginColumn,
-      final int endColumn) {
-    checkSheetRectagle(sheet, beginRow, endRow, beginColumn, endColumn);
-    for (int row = beginRow + 1; row < endRow; row++) {
+  private static TableRow parseOneRowFromRectagle(XSSFSheet sheet, ExcelRect rect) {
+    checkSheetRectagle(sheet, rect);
+    for (int row = rect.beginRow() + 1; row < rect.endRow(); row++) {
       checkArgument(
-          !SheetParserUtils.hasTopBorder(sheet, row, integerSetFromRange(beginColumn, endColumn)));
+          !SheetParserUtils.hasTopBorder(
+              sheet, row, integerSetFromRange(rect.beginColumn(), rect.endColumn())));
     }
 
     ImmutableMap<Integer, Boolean> hasSplitByColumn =
-        IntStream.range(beginColumn, endColumn)
+        IntStream.range(rect.beginColumn(), rect.endColumn())
             .boxed()
             .collect(
                 toImmutableMap(
                     column -> column,
                     column -> {
-                      for (int row = beginRow + 1; row < endRow; row++) {
+                      for (int row = rect.beginRow() + 1; row < rect.endRow(); row++) {
                         if (SheetParserUtils.hasTopBorder(sheet, row, ImmutableSet.of(column))) {
                           return true;
                         }
@@ -111,20 +92,24 @@ final class TableSheetParser {
                       return false;
                     }));
 
-    int subBeginColumn = beginColumn;
+    int subBeginColumn = rect.beginColumn();
     ArrayList<TableColumn> parsedColumns = Lists.newArrayList();
-    for (int column = beginColumn + 1; column <= endColumn; column++) {
+    for (int column = rect.beginColumn() + 1; column <= rect.endColumn(); column++) {
       // This is the last column or there is an internal horizontal cell boder to
       // further split.
-      if (column == endColumn
+      if (column == rect.endColumn()
           || hasSplitByColumn.get(column) != hasSplitByColumn.get(subBeginColumn)) {
         if (!hasSplitByColumn.get(subBeginColumn)) {
           parsedColumns.addAll(
-              parseLeafColumnsFromRectagle(sheet, beginRow, endRow, subBeginColumn, column));
+              parseLeafColumnsFromRectagle(
+                  sheet, ExcelRect.of(rect.beginRow(), rect.endRow(), subBeginColumn, column)));
         } else {
           parsedColumns.add(
               TableColumn.parent(
-                  parseRowsFromRectagle(sheet, beginRow, endRow, subBeginColumn, column, true)));
+                  parseRowsFromRectagle(
+                      sheet,
+                      ExcelRect.of(rect.beginRow(), rect.endRow(), subBeginColumn, column),
+                      true)));
         }
         subBeginColumn = column;
       }
@@ -137,38 +122,37 @@ final class TableSheetParser {
   // It is exepected that:
   // 1. This rectagle is surrounded by borders.
   // 2. There is no horizontal top borders within this rectagle.
-  private static List<TableColumn> parseLeafColumnsFromRectagle(
-      XSSFSheet sheet, int beginRow, int endRow, int beginColumn, int endColumn) {
-    checkSheetRectagle(sheet, beginRow, endRow, beginColumn, endColumn);
+  private static List<TableColumn> parseLeafColumnsFromRectagle(XSSFSheet sheet, ExcelRect rect) {
+    checkSheetRectagle(sheet, rect);
     checkArgument(
-        IntStream.range(beginRow + 1, endRow)
+        IntStream.range(rect.beginRow() + 1, rect.endRow())
             .allMatch(
                 row -> {
                   return SheetParserUtils.getColumnsWithTopBorder(
-                          sheet, row, integerSetFromRange(beginColumn, endColumn))
+                          sheet, row, integerSetFromRange(rect.beginColumn(), rect.endColumn()))
                       .isEmpty();
                 }));
 
-    ImmutableSet<Integer> allRows = integerSetFromRange(beginRow, endRow);
-    int subBeginColumn = beginColumn;
+    ImmutableSet<Integer> allRows = integerSetFromRange(rect.beginRow(), rect.endRow());
+    int subBeginColumn = rect.beginColumn();
     ArrayList<TableColumn> parsedColumns = Lists.newArrayList();
-    for (int column = beginColumn + 1; column <= endColumn; column++) {
+    for (int column = rect.beginColumn() + 1; column <= rect.endColumn(); column++) {
       if (SheetParserUtils.getRowsWithLeftBorder(sheet, allRows, column).containsAll(allRows)) {
         parsedColumns.add(
-            parseOneLeafColumnFromRectagle(sheet, beginRow, endRow, subBeginColumn, column));
+            parseOneLeafColumnFromRectagle(
+                sheet, ExcelRect.of(rect.beginRow(), rect.endRow(), subBeginColumn, column)));
         subBeginColumn = column;
       }
     }
     return parsedColumns;
   }
 
-  private static TableColumn parseOneLeafColumnFromRectagle(
-      XSSFSheet sheet, int beginRow, int endRow, int beginColumn, int endColumn) {
-    checkSheetRectagle(sheet, beginRow, endRow, beginColumn, endColumn);
+  private static TableColumn parseOneLeafColumnFromRectagle(XSSFSheet sheet, ExcelRect rect) {
+    checkSheetRectagle(sheet, rect);
 
     ArrayList<ExcelCellIndex> cellIndecies = Lists.newArrayList();
-    for (int row = beginRow; row < endRow; row++) {
-      for (int column = beginColumn; column < endColumn; column++) {
+    for (int row = rect.beginRow(); row < rect.endRow(); row++) {
+      for (int column = rect.beginColumn(); column < rect.endColumn(); column++) {
         cellIndecies.add(ExcelCellIndex.of(row, column));
       }
     }
@@ -180,37 +164,28 @@ final class TableSheetParser {
     return TableColumn.leaf(cellStrings);
   }
 
-  private static void checkSheetRectagle(
-      XSSFSheet sheet, int beginRow, int endRow, int beginColumn, int endColumn) {
+  private static void checkSheetRectagle(XSSFSheet sheet, ExcelRect rect) {
     checkNotNull(sheet);
-    checkArgument(
-        beginRow >= 0 && beginRow < endRow && beginColumn >= 0 && beginColumn < endColumn);
+    checkNotNull(rect);
 
     // Checks existences of top and bottom borders.
-    ImmutableSet<Integer> allColumns = integerSetFromRange(beginColumn, endColumn);
+    ImmutableSet<Integer> allColumns = integerSetFromRange(rect.beginColumn(), rect.endColumn());
     checkArgument(
-        SheetParserUtils.hasTopBorder(sheet, beginRow, allColumns),
-        String.format(
-            "Invalid rectagle, there is no top border from (%d, %d) to (%d, %d)",
-            beginRow, beginColumn, beginRow, endColumn));
+        SheetParserUtils.hasTopBorder(sheet, rect.beginRow(), allColumns),
+        String.format("Invalid rectagle %s, it has no top border", rect));
+
     checkArgument(
-        SheetParserUtils.hasTopBorder(sheet, endRow, allColumns),
-        String.format(
-            "Invalid rectagle, there is no top border from (%d, %d) to (%d, %d)",
-            endRow, beginColumn, endRow, endColumn));
+        SheetParserUtils.hasTopBorder(sheet, rect.endRow(), allColumns),
+        String.format("Invalid rectagle %s, it has no bottom border", rect));
 
     // Checks existences of left and right borders.
-    ImmutableSet<Integer> allRows = integerSetFromRange(beginRow, endRow);
+    ImmutableSet<Integer> allRows = integerSetFromRange(rect.beginRow(), rect.endRow());
     checkArgument(
-        SheetParserUtils.hasLeftBorder(sheet, allRows, beginColumn),
-        String.format(
-            "Invalid rectagle, there is no left border from (%d, %d) to (%d, %d)",
-            beginRow, beginColumn, endRow, beginColumn));
+        SheetParserUtils.hasLeftBorder(sheet, allRows, rect.beginColumn()),
+        String.format("Invalid rectagle %s, it has no left border", rect));
     checkArgument(
-        SheetParserUtils.hasLeftBorder(sheet, allRows, endColumn),
-        String.format(
-            "Invalid rectagle, there is no left border from (%d, %d) to (%d, %d)",
-            beginRow, endColumn, endRow, endColumn));
+        SheetParserUtils.hasLeftBorder(sheet, allRows, rect.endColumn()),
+        String.format("Invalid rectagle %s, it has no right border", rect));
   }
 
   private static ImmutableSet<Integer> integerSetFromRange(int begin, int end) {

@@ -1,5 +1,6 @@
 package club.netheril.convert_3gpp_excel;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -19,15 +20,9 @@ final class MetadataSheetParser {
     XSSFSheet sheet = workbook.getSheet(SHEET_NAME);
     checkNotNull(sheet, "Unable to find metadata sheet in the Excel file");
 
-    String specName = null;
-    String specVersion = null;
-    String tableSerialNumber = null;
-    String tableTitle = null;
-    int beginRow = -1;
-    int endRow = -1;
-    int beginCol = -1;
-    int endCol = -1;
-
+    TableMetadata.Builder builder = TableMetadata.builder();
+    ExcelCellIndex topLeft = null;
+    ExcelCellIndex bottomRight = null;
     for (int i = 0; i <= sheet.getLastRowNum(); i++) {
       String key = SheetParserUtils.safeGetCellString(sheet, ExcelCellIndex.of(i, 0));
       String value = SheetParserUtils.safeGetCellString(sheet, ExcelCellIndex.of(i, 1));
@@ -35,28 +30,26 @@ final class MetadataSheetParser {
         continue;
       }
       if (key.equals(KEY_SPEC_NAME)) {
-        specName = value;
+        builder.setSpecName(value);
       } else if (key.equals(KEY_SPEC_VERSION)) {
-        specVersion = value;
+        builder.setSpecVersion(value);
       } else if (key.equals(KEY_SERIAL_NUM)) {
-        tableSerialNumber = value;
+        builder.setTableSerialNumber(value);
       } else if (key.equals(KEY_TITLE)) {
-        tableTitle = value;
+        builder.setTableTitle(value);
       } else if (key.equals(KEY_TOP_LEFT)) {
-        ExcelCellIndex topLeft = ExcelCellIndex.of(value);
-        beginRow = topLeft.row();
-        beginCol = topLeft.column();
+        topLeft = ExcelCellIndex.of(value);
       } else if (key.equals(KEY_TOP_BOTTOM_RIGHT)) {
-        ExcelCellIndex bottomRight = ExcelCellIndex.of(value);
-        endRow = bottomRight.row() + 1;
-        endCol = bottomRight.column() + 1;
+        bottomRight = ExcelCellIndex.of(value);
       } else {
         throw new IllegalArgumentException(
             String.format("Unrecognizable key column '%s' in metadata sheet", key));
       }
     }
+    checkArgument(
+        topLeft != null && bottomRight != null,
+        "Missing top left and/or bottom right cell of the table data rect");
 
-    return new TableMetadata(
-        specName, specVersion, tableSerialNumber, tableTitle, beginRow, endRow, beginCol, endCol);
+    return builder.setTableDataRect(ExcelRect.of(topLeft, bottomRight)).build();
   }
 }

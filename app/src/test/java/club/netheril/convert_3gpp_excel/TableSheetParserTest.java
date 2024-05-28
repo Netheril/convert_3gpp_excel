@@ -44,7 +44,14 @@ public class TableSheetParserTest {
   @Test
   public void parse_succeed() {
 
-    TableMetadata metadata = new TableMetadata("38.101-3", "h50", "5.3B.1.3-1", "", 5, 20, 0, 7);
+    TableMetadata metadata =
+        TableMetadata.builder()
+            .setSpecName("38.101-3")
+            .setSpecVersion("h50")
+            .setTableSerialNumber("5.3B.1.3-1")
+            .setTableTitle("")
+            .setTableDataRect(ExcelRect.of("A6", "G20"))
+            .build();
 
     // We pick row [5, 20) from the Excel file in this test, which looks like this:
     // ┌─────────────┬─────────────┬─────────────┬─────────────────────┬─────────────┬─────┬───┐
@@ -199,7 +206,14 @@ public class TableSheetParserTest {
 
   @Test
   public void parse_succeedOnWide() {
-    TableMetadata metadata = new TableMetadata("36.101", "h70", "5.6A.1-2", "", 3, 11, 0, 32);
+    TableMetadata metadata =
+        TableMetadata.builder()
+            .setSpecName("36.101")
+            .setSpecVersion("h70")
+            .setTableSerialNumber("5.6A.1-2")
+            .setTableTitle("")
+            .setTableDataRect(ExcelRect.of("A4", "AF11"))
+            .build();
 
     // This is an additional test case which uses an "extremely wide" excel file, in
     // which one logical leaf column is composed of multiple physical Excel columns.
@@ -331,7 +345,14 @@ public class TableSheetParserTest {
     // └─────────────┴─────────────┴─────────────┴─────────────────────┴─────────────┴─────┴───┘
     // It has an invalid cell border and thus can't be parsed.
 
-    TableMetadata metadata = new TableMetadata("38.101-3", "h50", "5.3B.1.3-1", "", 21, 26, 0, 7);
+    TableMetadata metadata =
+        TableMetadata.builder()
+            .setSpecName("38.101-3")
+            .setSpecVersion("h50")
+            .setTableSerialNumber("5.3B.1.3-1")
+            .setTableTitle("")
+            .setTableDataRect(ExcelRect.of(ExcelCellIndex.of(21, 0), ExcelCellIndex.of(26, 7)))
+            .build();
     assertThrows(
         IllegalArgumentException.class, () -> TableSheetParser.parse(testWorkbook, metadata));
   }
@@ -340,7 +361,14 @@ public class TableSheetParserTest {
   public void parse_failureDueToInvalidDataRegion() {
     // We pick row [10, 20) from the Excel in this test, which is not a valid data
     // region.
-    TableMetadata metadata = new TableMetadata("38.101-3", "h50", "5.3B.1.3-1", "", 10, 20, 0, 7);
+    TableMetadata metadata =
+        TableMetadata.builder()
+            .setSpecName("38.101-3")
+            .setSpecVersion("h50")
+            .setTableSerialNumber("5.3B.1.3-1")
+            .setTableTitle("")
+            .setTableDataRect(ExcelRect.of(ExcelCellIndex.of(10, 0), ExcelCellIndex.of(20, 7)))
+            .build();
     assertThrows(
         IllegalArgumentException.class, () -> TableSheetParser.parse(testWorkbook, metadata));
   }

@@ -40,24 +40,16 @@ public class MetadataSheetParserTest {
   @Test
   public void parse_succeed() {
     TableMetadata expected =
-        new TableMetadata(
-            "38.101-3",
-            "17.7.0",
-            "5.3B.1.3-1",
-            "EN-DC configurations and bandwidth combination sets defined for intra-band"
-                + " non-contiguous EN-DC",
-            4,
-            48,
-            0,
-            7);
+        TableMetadata.builder()
+            .setSpecName("38.101-3")
+            .setSpecVersion("17.7.0")
+            .setTableSerialNumber("5.3B.1.3-1")
+            .setTableTitle(
+                "EN-DC configurations and bandwidth combination sets defined for intra-band"
+                    + " non-contiguous EN-DC")
+            .setTableDataRect(ExcelRect.of("A5", "G48"))
+            .build();
     TableMetadata actual = MetadataSheetParser.parse(testWorkbook);
-    assertEquals(expected.spec_name(), actual.spec_name());
-    assertEquals(expected.spec_version(), actual.spec_version());
-    assertEquals(expected.table_serial_number(), actual.table_serial_number());
-    assertEquals(expected.table_title(), actual.table_title());
-    assertEquals(expected.begin_row(), actual.begin_row());
-    assertEquals(expected.end_row(), actual.end_row());
-    assertEquals(expected.begin_col(), actual.begin_col());
-    assertEquals(expected.end_col(), actual.end_col());
+    assertEquals(expected, actual);
   }
 }

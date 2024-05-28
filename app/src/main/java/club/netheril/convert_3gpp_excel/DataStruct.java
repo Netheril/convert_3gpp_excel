@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+// This class represents a cell index in Excel sheet.
 @AutoValue
 abstract class ExcelCellIndex {
 
@@ -23,6 +24,7 @@ abstract class ExcelCellIndex {
   abstract int column();
 
   public static ExcelCellIndex of(int row, int col) {
+    checkArgument(row >= 0 && col >= 0, "Row and column index must be non-negative");
     return new AutoValue_ExcelCellIndex(row, col);
   }
 
@@ -66,73 +68,87 @@ abstract class ExcelCellIndex {
   }
 }
 
-final class TableMetadata {
-  // The spec name, spec version and serial number of this table in 3GPP specs,
-  // e.g.: "36.101" + "h50" + "5.5A.1-1".
-  private final String specName;
-  private final String specVersion;
-  private final String tableSerialNumber;
+// This class represents a rectangle region in Excel sheet.
+@AutoValue
+abstract class ExcelRect {
+  abstract ExcelCellIndex topLeft();
 
-  private final String tableTitle;
+  abstract ExcelCellIndex bottomRight();
 
   // Following 4 fields define a row range [begin_row, end_row) and a column
-  // range [begin_column, end_column). They form a rectangle region which
-  // contains all table data.
-  private final int beginRow;
-  private final int endRow;
-  private final int beginCol;
-  private final int endCol;
-
-  public TableMetadata(
-      String specName,
-      String specVersion,
-      String tableSerialNumber,
-      String tableTitle,
-      int beginRow,
-      int endRow,
-      int beginCol,
-      int endCol) {
-    checkArgument(beginRow >= 0 && beginRow < endRow && beginCol >= 0 && beginCol < endCol);
-    this.specName = specName;
-    this.specVersion = specVersion;
-    this.tableSerialNumber = tableSerialNumber;
-    this.tableTitle = tableTitle;
-    this.beginRow = beginRow;
-    this.endRow = endRow;
-    this.beginCol = beginCol;
-    this.endCol = endCol;
+  // range [begin_column, end_column).
+  public int beginRow() {
+    return topLeft().row();
   }
 
-  public String spec_name() {
-    return specName;
+  public int endRow() {
+    return bottomRight().row() + 1;
   }
 
-  public String spec_version() {
-    return specVersion;
+  public int beginColumn() {
+    return topLeft().column();
   }
 
-  public String table_serial_number() {
-    return tableSerialNumber;
+  public int endColumn() {
+    return bottomRight().column() + 1;
   }
 
-  public String table_title() {
-    return tableTitle;
+  public static ExcelRect of(ExcelCellIndex topLeft, ExcelCellIndex bottomRight) {
+    checkNotNull(topLeft);
+    checkNotNull(bottomRight);
+    checkArgument(
+        topLeft.row() <= bottomRight.row() && topLeft.column() <= bottomRight.column(),
+        String.format(
+            "Invalid Excel rect: top left cell %s is not above or to the left of bottom right cell"
+                + " %s",
+            topLeft, bottomRight));
+    return new AutoValue_ExcelRect(topLeft, bottomRight);
   }
 
-  public int begin_row() {
-    return beginRow;
+  public static ExcelRect of(String topLeftName, String bottomRightName) {
+    return ExcelRect.of(ExcelCellIndex.of(topLeftName), ExcelCellIndex.of(bottomRightName));
   }
 
-  public int end_row() {
-    return endRow;
+  public static ExcelRect of(int beginRow, int endRow, int beginColumn, int endColumn) {
+    return ExcelRect.of(
+        ExcelCellIndex.of(beginRow, beginColumn), ExcelCellIndex.of(endRow - 1, endColumn - 1));
   }
 
-  public int begin_col() {
-    return beginCol;
+  @Override
+  public String toString() {
+    return String.format("<%s, %s>", topLeft(), bottomRight());
+  }
+}
+
+@AutoValue
+abstract class TableMetadata {
+  abstract String specName(); // The spec name, e.g., "36.101"
+
+  abstract String specVersion(); // The spec version, e.g., "h50"
+
+  abstract String tableSerialNumber(); // The table serial number, e.g., "5.5A.1-1"
+
+  abstract String tableTitle(); // The table title.
+
+  abstract ExcelRect tableDataRect(); // The rect in Excel file which contains all table data.
+
+  static Builder builder() {
+    return new AutoValue_TableMetadata.Builder();
   }
 
-  public int end_col() {
-    return endCol;
+  @AutoValue.Builder
+  abstract static class Builder {
+    abstract Builder setSpecName(String specName);
+
+    abstract Builder setSpecVersion(String specVersion);
+
+    abstract Builder setTableSerialNumber(String tableSerialNumber);
+
+    abstract Builder setTableTitle(String tableTitle);
+
+    abstract Builder setTableDataRect(ExcelRect tableDataRect);
+
+    abstract TableMetadata build();
   }
 }
 
