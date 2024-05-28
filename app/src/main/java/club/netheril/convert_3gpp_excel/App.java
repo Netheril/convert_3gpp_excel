@@ -14,7 +14,8 @@ public class App {
       XSSFWorkbook wb = new XSSFWorkbook(file);
       TableMetadata metadata = MetadataSheetParser.parse(wb);
       TableData data = TableSheetParser.parse(wb, metadata);
-      System.out.println(String.format("Successfully parsed Excel file %s", excelFileName));
+      System.out.println(
+          String.format("Successfully parsed Excel file %s, data =\n%s\n", excelFileName, data));
       wb.close();
 
     } catch (Throwable e) {

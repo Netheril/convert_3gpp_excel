@@ -4,12 +4,13 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.auto.value.AutoValue;
+import com.google.auto.value.extension.toprettystring.ToPrettyString;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.annotation.Nullable;
 
 // This class represents a cell index in Excel sheet.
 @AutoValue
@@ -152,66 +153,41 @@ abstract class TableMetadata {
   }
 }
 
-final class TableRow {
-  private ImmutableList<TableColumn> columnList;
-
-  private TableRow(ImmutableList<TableColumn> columns) {
-    columnList = columns;
-  }
+@AutoValue
+abstract class TableRow {
+  abstract ImmutableList<TableColumn> columns();
 
   public static TableRow of(List<TableColumn> columns) {
     checkArgument(columns != null && !columns.isEmpty());
-    return new TableRow(ImmutableList.copyOf(columns));
+    return new AutoValue_TableRow(ImmutableList.copyOf(columns));
   }
 
   public static TableRow of(TableColumn... columns) {
     return TableRow.of(ImmutableList.copyOf(columns));
   }
 
-  public ImmutableList<TableColumn> columns() {
-    return columnList;
-  }
-
+  @ToPrettyString
   @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((columnList == null) ? 0 : columnList.hashCode());
-    return result;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) return true;
-    if (obj == null || getClass() != obj.getClass()) return false;
-    TableRow other = (TableRow) obj;
-    if (columnList == null) {
-      return other.columnList == null;
-    } else {
-      return Iterables.elementsEqual(columnList, other.columnList);
-    }
-  }
-
-  @Override
-  public String toString() {
-    return "TableRow ["
-        + Joiner.on(", ").join(columnList.stream().map(c -> c.toString()).toArray())
-        + "]";
-  }
+  public abstract String toString();
 }
 
-final class TableColumn {
-  private static final TableColumn EMPTY = new TableColumn("empty", null, null);
-
-  private final String type;
-  private final ImmutableList<String> cellList;
-  private final ImmutableList<TableRow> childRowList;
-
-  private TableColumn(String type, ImmutableList<String> cells, ImmutableList<TableRow> childRows) {
-    this.type = type;
-    cellList = cells;
-    childRowList = childRows;
+@AutoValue
+abstract class TableColumn {
+  enum Type {
+    EMPTY,
+    LEAF,
+    PARENT
   }
+
+  abstract Type type();
+
+  @Nullable
+  abstract ImmutableList<String> cells();
+
+  @Nullable
+  abstract ImmutableList<TableRow> childRows();
+
+  private static final TableColumn EMPTY = new AutoValue_TableColumn(Type.EMPTY, null, null);
 
   public static TableColumn empty() {
     return EMPTY;
@@ -220,7 +196,7 @@ final class TableColumn {
   public static TableColumn leaf(List<String> cells) {
     return cells == null || cells.isEmpty()
         ? TableColumn.empty()
-        : new TableColumn("leaf", ImmutableList.copyOf(cells), null);
+        : new AutoValue_TableColumn(Type.LEAF, ImmutableList.copyOf(cells), null);
   }
 
   public static TableColumn leaf(String... cells) {
@@ -230,100 +206,44 @@ final class TableColumn {
   public static TableColumn parent(List<TableRow> childRows) {
     return childRows == null || childRows.isEmpty()
         ? TableColumn.empty()
-        : new TableColumn("parent", null, ImmutableList.copyOf(childRows));
+        : new AutoValue_TableColumn(Type.PARENT, null, ImmutableList.copyOf(childRows));
   }
 
   public static TableColumn parent(TableRow... childRows) {
     return TableColumn.parent(ImmutableList.copyOf(childRows));
   }
 
-  public ImmutableList<String> cells() {
-    checkNotNull(cellList, String.format("No cell values available for this %s column!", type));
-    return cellList;
-  }
-
-  public ImmutableList<TableRow> child_rows() {
-    checkNotNull(childRowList, String.format("No child rows available for this %s column!", type));
-    return childRowList;
-  }
-
-  @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((type == null) ? 0 : type.hashCode());
-    result = prime * result + ((cellList == null) ? 0 : cellList.hashCode());
-    result = prime * result + ((childRowList == null) ? 0 : childRowList.hashCode());
-    return result;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) return true;
-    if (obj == null || getClass() != obj.getClass()) return false;
-    TableColumn other = (TableColumn) obj;
-    if (!type.equals(other.type)) return false;
-    if (type == "empty") {
-      return true;
-    } else if (type == "leaf") {
-      return Iterables.elementsEqual(cellList, other.cellList);
-    } else if (type == "parent") {
-      return Iterables.elementsEqual(childRowList, other.childRowList);
-    }
-    throw new AssertionError(String.format("Unknown column type %s", type));
-  }
-
   @Override
   public String toString() {
-    if (type == "empty") {
-      return "TableEmptyColumn";
-    } else if (type == "leaf") {
-      return "TableLeafColumn [" + Joiner.on(", ").join(cellList) + "]";
-    } else if (type == "parent") {
-      return "TableParentColumn ["
-          + Joiner.on(", ").join(childRowList.stream().map(child -> child.toString()).toArray())
-          + "]";
+    switch (type()) {
+      case EMPTY:
+        return "EmptyColumn";
+      case LEAF:
+        return "LeafColumn [" + Joiner.on(", ").join(cells()) + "]";
+      case PARENT:
+        return "ParentColumn ["
+            + Joiner.on(", ").join(childRows().stream().map(TableRow::toString).iterator())
+            + "]";
+      default:
+        throw new IllegalStateException("Unknown TableColumn type: " + type());
     }
-    throw new AssertionError(String.format("Unknown column type %s", type));
   }
 }
 
-final class TableData {
-  private final ImmutableList<TableRow> rowList;
-
-  private TableData(ImmutableList<TableRow> rows) {
-    rowList = rows;
-  }
+@AutoValue
+abstract class TableData {
+  abstract ImmutableList<TableRow> rows();
 
   public static TableData of(List<TableRow> rows) {
-    return new TableData(ImmutableList.copyOf(rows));
+    checkArgument(rows != null && !rows.isEmpty());
+    return new AutoValue_TableData(ImmutableList.copyOf(rows));
   }
 
   public static TableData of(TableRow... rows) {
     return TableData.of(ImmutableList.copyOf(rows));
   }
 
-  public ImmutableList<TableRow> rows() {
-    return rowList;
-  }
-
+  @ToPrettyString
   @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((rowList == null) ? 0 : rowList.hashCode());
-    return result;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) return true;
-    if (obj == null || getClass() != obj.getClass()) return false;
-    TableData other = (TableData) obj;
-    if (rowList == null) {
-      return other.rowList == null;
-    } else {
-      return rowList.equals(other.rowList);
-    }
-  }
+  public abstract String toString();
 }
