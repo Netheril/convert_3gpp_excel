@@ -7,8 +7,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Font;
@@ -23,25 +21,6 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 final class SheetParserUtils {
 
   private static final int MAX_COLUMN_IDX = 1000;
-  private static final Pattern EXCEL_CELL_NAME_PATTERN = Pattern.compile("^([A-Z]+)([0-9]+)$");
-
-  // Parse a cell name used by Excel to the 0-based row/column index pair.
-  // For example: A1 -> (0, 0), C12 -> (2, 11), AA70 -> (26, 69)
-  public static ExcelCellIndex parseExcelCellName(String name) {
-    Matcher m = EXCEL_CELL_NAME_PATTERN.matcher(name);
-    checkArgument(m.matches(), String.format("Unrecognizable Excel cell name '%s'", name));
-    return ExcelCellIndex.of(
-        Integer.valueOf(m.group(2), 10).intValue() - 1, translateColumnName(m.group(1)));
-  }
-
-  private static int translateColumnName(String name) {
-    int column = 0;
-    while (!name.isEmpty()) {
-      column = column * 26 + (name.charAt(0) - 'A' + 1);
-      name = name.substring(1);
-    }
-    return column - 1;
-  }
 
   public static String safeGetCellString(XSSFSheet sheet, ExcelCellIndex cellIndex) {
     Optional<XSSFCell> cell = safeGetCell(sheet, cellIndex);
@@ -112,8 +91,8 @@ final class SheetParserUtils {
             && cellIndex.row() <= sheet.getLastRowNum() + 1
             // Apache POI doesn't support get last column number, use a reasonable constant
             // instead.
-            && cellIndex.col() >= 0
-            && cellIndex.col() <= MAX_COLUMN_IDX,
+            && cellIndex.column() >= 0
+            && cellIndex.column() <= MAX_COLUMN_IDX,
         String.format("Invalid cell index %s", cellIndex.toString()));
   }
 
@@ -121,7 +100,7 @@ final class SheetParserUtils {
     checkSheetArgument(sheet, cellIndex);
     Optional<XSSFRow> row = Optional.fromNullable(sheet.getRow(cellIndex.row()));
     return row.isPresent()
-        ? Optional.fromNullable(row.get().getCell(cellIndex.col()))
+        ? Optional.fromNullable(row.get().getCell(cellIndex.column()))
         : Optional.absent();
   }
 

@@ -3,53 +3,66 @@ package club.netheril.convert_3gpp_excel;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import com.google.auto.value.AutoValue;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-final class ExcelCellIndex {
-  private int rowValue;
-  private int colValue;
+@AutoValue
+abstract class ExcelCellIndex {
 
-  private ExcelCellIndex(int row, int col) {
-    checkArgument(row >= 0 && col >= 0);
-    this.rowValue = row;
-    this.colValue = col;
-  }
+  private static final Pattern EXCEL_CELL_NAME_PATTERN = Pattern.compile("^([A-Z]+)([0-9]+)$");
+
+  // Zero-based row index.
+  abstract int row();
+
+  // Zero-based column index.
+  abstract int column();
 
   public static ExcelCellIndex of(int row, int col) {
-    return new ExcelCellIndex(row, col);
+    return new AutoValue_ExcelCellIndex(row, col);
   }
 
-  public int row() {
-    return rowValue;
-  }
-
-  public int col() {
-    return colValue;
+  public static ExcelCellIndex of(String excelCellName) {
+    // Parse a cell name used by Excel to the 0-based row/column index pair.
+    // For example: A1 -> (0, 0), C12 -> (2, 11), AA70 -> (26, 69)
+    checkNotNull(excelCellName);
+    Matcher m = EXCEL_CELL_NAME_PATTERN.matcher(excelCellName);
+    checkArgument(m.matches(), String.format("Unrecognizable Excel cell name '%s'", excelCellName));
+    return ExcelCellIndex.of(
+        Integer.valueOf(m.group(2), 10).intValue() - 1, columnNameToIndex(m.group(1)));
   }
 
   @Override
   public String toString() {
-    return String.format("(%d, %d)", rowValue, colValue);
+    return String.format("%s%d", columnIndexToName(column() + 1), row() + 1);
   }
 
-  @Override
-  public int hashCode() {
-    return rowValue * 65536 + colValue;
+  private static int columnNameToIndex(String name) {
+    int column = 0;
+    while (!name.isEmpty()) {
+      column = column * 26 + (name.charAt(0) - 'A' + 1);
+      name = name.substring(1);
+    }
+    return column - 1;
   }
 
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
+  // Please note that the column index here is 1-based.
+  private static String columnIndexToName(int index) {
+    if (index <= 26) {
+      return String.valueOf((char) ('A' + index - 1));
+    } else {
+      int remainder = index % 26;
+      index /= 26;
+      if (remainder == 0) {
+        remainder = 26;
+        index -= 1;
+      }
+      return columnIndexToName(index) + (char) ('A' + remainder - 1);
     }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    ExcelCellIndex other = (ExcelCellIndex) obj;
-    return row() == other.row() && col() == other.col();
   }
 }
 

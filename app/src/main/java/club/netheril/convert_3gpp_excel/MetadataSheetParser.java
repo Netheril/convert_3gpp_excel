@@ -43,13 +43,13 @@ final class MetadataSheetParser {
       } else if (key.equals(KEY_TITLE)) {
         tableTitle = value;
       } else if (key.equals(KEY_TOP_LEFT)) {
-        ExcelCellIndex topLeft = SheetParserUtils.parseExcelCellName(value);
+        ExcelCellIndex topLeft = ExcelCellIndex.of(value);
         beginRow = topLeft.row();
-        beginCol = topLeft.col();
+        beginCol = topLeft.column();
       } else if (key.equals(KEY_TOP_BOTTOM_RIGHT)) {
-        ExcelCellIndex bottomRight = SheetParserUtils.parseExcelCellName(value);
+        ExcelCellIndex bottomRight = ExcelCellIndex.of(value);
         endRow = bottomRight.row() + 1;
-        endCol = bottomRight.col() + 1;
+        endCol = bottomRight.column() + 1;
       } else {
         throw new IllegalArgumentException(
             String.format("Unrecognizable key column '%s' in metadata sheet", key));

@@ -24,10 +24,14 @@ dependencies {
 
     // This dependency is used by the application.
     implementation(libs.guava)
-    // https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
-    implementation("org.apache.poi:poi-ooxml:5.2.5")
     // Suppress the warning for no logging implementation.
     implementation("org.apache.logging.log4j:log4j-core:2.19.0")
+    // The apache POI library used for parsing Excel files.
+    // https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+    // Support AutoValue.
+    compileOnly("com.google.auto.value:auto-value-annotations:1.10.4")
+    annotationProcessor("com.google.auto.value:auto-value:1.10.4")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

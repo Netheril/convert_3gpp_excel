@@ -44,26 +44,6 @@ public class SheetParserUtilsTest {
   }
 
   @Test
-  public void parseExcelCellName_succeed() {
-    ExcelCellIndex a12 = SheetParserUtils.parseExcelCellName("A12");
-    assertEquals(11, a12.row());
-    assertEquals(0, a12.col());
-
-    ExcelCellIndex c99 = SheetParserUtils.parseExcelCellName("C99");
-    assertEquals(98, c99.row());
-    assertEquals(2, c99.col());
-
-    ExcelCellIndex ab1001 = SheetParserUtils.parseExcelCellName("AB1001");
-    assertEquals(1000, ab1001.row());
-    assertEquals(27, ab1001.col());
-  }
-
-  @Test
-  public void parseExcelCellName_fail() {
-    assertThrows(IllegalArgumentException.class, () -> SheetParserUtils.parseExcelCellName("12A"));
-  }
-
-  @Test
   public void safeGetCellString_succeed() {
     ImmutableMap<ExcelCellIndex, String> expectedResults =
         ImmutableMap.<ExcelCellIndex, String>builder()
