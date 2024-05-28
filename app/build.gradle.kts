@@ -8,6 +8,9 @@
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     application
+    // Shadow plugin to create fat/uber jar file.
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("java")
 }
 
 repositories {
@@ -23,6 +26,8 @@ dependencies {
     implementation(libs.guava)
     // https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
     implementation("org.apache.poi:poi-ooxml:5.2.5")
+    // Suppress the warning for no logging implementation.
+    implementation("org.apache.logging.log4j:log4j-core:2.19.0")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

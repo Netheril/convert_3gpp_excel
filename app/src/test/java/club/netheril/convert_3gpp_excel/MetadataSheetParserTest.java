@@ -1,5 +1,6 @@
 package club.netheril.convert_3gpp_excel;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
@@ -18,9 +19,7 @@ public class MetadataSheetParserTest {
   @Before
   public void setUp() {
     InputStream file = getClass().getClassLoader().getResourceAsStream(TEST_EXCEL_FILE);
-    if (file == null) {
-      throw new RuntimeException(String.format("Unable to find file '%s'", TEST_EXCEL_FILE));
-    }
+    checkNotNull(file, "Unable to find file '%s'", TEST_EXCEL_FILE);
     try {
       testWorkbook = new XSSFWorkbook(file);
     } catch (IOException | IllegalArgumentException e) {

@@ -4,12 +4,23 @@
 package club.netheril.convert_3gpp_excel;
 
 import java.io.FileInputStream;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class App {
-  public String getGreeting() {
-    return "Hello World!";
+
+  public static void run(String excelFileName) {
+    try {
+      FileInputStream file = new FileInputStream(excelFileName);
+      XSSFWorkbook wb = new XSSFWorkbook(file);
+      TableMetadata metadata = MetadataSheetParser.parse(wb);
+      TableData data = TableSheetParser.parse(wb, metadata);
+      System.out.println(String.format("Successfully parsed Excel file %s", excelFileName));
+      wb.close();
+
+    } catch (Throwable e) {
+      throw new IllegalArgumentException(
+          String.format("Failed to parse Excel file '%s' as a 3GPP spec table", excelFileName), e);
+    }
   }
 
   public static void main(String[] args) {
@@ -19,20 +30,6 @@ public class App {
               "We expect only one command argument, i.e., path to the excel file. But we got '%s'",
               String.join(", ", args)));
     }
-    try {
-      FileInputStream file = new FileInputStream(args[0]);
-      XSSFWorkbook wb = new XSSFWorkbook(file);
-      XSSFSheet sheet = wb.getSheetAt(0);
-      System.out.println("== cell ==");
-      System.out.println(SheetParserUtils.safeGetCellString(sheet, ExcelCellIndex.of(3, 3)));
-      System.out.println("== /cell ==");
-      wb.close();
-
-    } catch (Throwable e) {
-      throw new IllegalArgumentException(
-          String.format("Failed to parse Excel file '%s' as a 3GPP spec table.", args[0]), e);
-    }
-
-    System.out.println(new App().getGreeting());
+    run(args[0]);
   }
 }

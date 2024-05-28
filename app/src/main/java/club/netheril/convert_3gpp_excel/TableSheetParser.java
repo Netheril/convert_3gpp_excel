@@ -44,7 +44,8 @@ final class TableSheetParser {
             metadata.begin_row(),
             metadata.end_row(),
             metadata.begin_col(),
-            metadata.end_col()));
+            metadata.end_col(),
+            false));
   }
 
   // Parse a rectagle area in the sheet that consists of one or more logical rows.
@@ -53,12 +54,19 @@ final class TableSheetParser {
   // 2. This rectagle is splitted into logical table rows according horizontal
   // continuous top borders that across the entire rectagle.
   private static List<TableRow> parseRowsFromRectagle(
-      XSSFSheet sheet, int beginRow, int endRow, int beginColumn, int endColumn) {
+      XSSFSheet sheet,
+      int beginRow,
+      int endRow,
+      int beginColumn,
+      int endColumn,
+      boolean strictCheck) {
     checkSheetRectagle(sheet, beginRow, endRow, beginColumn, endColumn);
     ImmutableSet<Integer> allColumns = integerSetFromRange(beginColumn, endColumn);
-    checkArgument(
-        IntStream.range(beginRow + 1, endRow)
-            .anyMatch(row -> SheetParserUtils.hasTopBorder(sheet, row, allColumns)));
+    if (strictCheck) {
+      checkArgument(
+          IntStream.range(beginRow + 1, endRow)
+              .anyMatch(row -> SheetParserUtils.hasTopBorder(sheet, row, allColumns)));
+    }
 
     int subBeginRow = beginRow;
     ArrayList<TableRow> parsedRows = Lists.newArrayList();
@@ -116,7 +124,7 @@ final class TableSheetParser {
         } else {
           parsedColumns.add(
               TableColumn.parent(
-                  parseRowsFromRectagle(sheet, beginRow, endRow, subBeginColumn, column)));
+                  parseRowsFromRectagle(sheet, beginRow, endRow, subBeginColumn, column, true)));
         }
         subBeginColumn = column;
       }
