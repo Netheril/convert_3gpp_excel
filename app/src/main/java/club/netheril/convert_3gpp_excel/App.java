@@ -8,15 +8,14 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class App {
 
-  public static void run(String excelFileName) {
+  static TableData parseExcelFile(String excelFileName) {
     try {
       FileInputStream file = new FileInputStream(excelFileName);
       XSSFWorkbook wb = new XSSFWorkbook(file);
       TableMetadata metadata = MetadataSheetParser.parse(wb);
       TableData data = TableSheetParser.parse(wb, metadata);
-      System.out.println(
-          String.format("Successfully parsed Excel file %s, data =\n%s\n", excelFileName, data));
       wb.close();
+      return data;
 
     } catch (Throwable e) {
       throw new IllegalArgumentException(
@@ -31,6 +30,8 @@ public class App {
               "We expect only one command argument, i.e., path to the excel file. But we got '%s'",
               String.join(", ", args)));
     }
-    run(args[0]);
+    System.out.println(
+        String.format(
+            "Successfully parsed Excel file %s, data =\n%s\n", args[0], parseExcelFile(args[0])));
   }
 }

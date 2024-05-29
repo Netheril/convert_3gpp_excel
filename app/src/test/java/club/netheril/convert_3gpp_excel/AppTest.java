@@ -9,7 +9,12 @@ import org.junit.Test;
 
 public class AppTest {
   @Test
-  public void appHasAGreeting() {
-    App converter = new App();
+  public void parseExcelFileSucceed() {
+    String excelFileUrl =
+        getClass().getClassLoader().getResource("table_5.5A.3.2-1.xlsx").toString();
+    assertTrue(excelFileUrl.startsWith("file:"));
+
+    TableData tableData = App.parseExcelFile(excelFileUrl.substring("file:".length()));
+    assertTrue(tableData.rows().size() > 0);
   }
 }
